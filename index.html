@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#f3c400" />
+  <title>visafold · 签证官模拟器</title>
+  <meta name="description" content="为中国大陆护照持有人提供旅游与工作签证的个性化条件匹配度测评。" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@400;500;700;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="site-shell">
+    <header class="topbar">
+      <a class="brand" href="#top" aria-label="visafold 首页"><span class="brand-mark">vf</span><span>visafold</span></a>
+      <div class="topbar-meta"><span class="live-dot"></span><span>政策资料库 · 2026.11</span><button class="text-button" id="resetTop" type="button">重新开始</button></div>
+    </header>
+
+    <main id="top">
+      <section class="hero-grid">
+        <div class="hero-copy">
+          <p class="eyebrow">VISA OFFICER SIMULATOR <span>01</span></p>
+          <h1>你的下一站，<br /><em>先算清楚。</em></h1>
+          <p class="hero-lede">把个人情况变成一张清晰的签证准备地图。选择目的地，回答几个关键问题，带走一份专属于你的申请判断。</p>
+          <button class="primary-button hero-cta" id="startButton" type="button"><span>开始测评</span><span class="button-arrow">↗</span></button>
+          <div class="hero-notes"><span>约 3 分钟</span><span>无需注册</span><span>结果可下载</span></div>
+        </div>
+        <div class="hero-image-wrap">
+          <div class="hero-image"></div>
+          <div class="image-stamp"><span>FIELD NOTE</span><strong>你的目的地<br />正在等待</strong><small>VISAFOLD / 01</small></div>
+          <div class="image-caption">TRAVEL INTELLIGENCE<br /><span>把准备做在出发之前</span></div>
+        </div>
+      </section>
+
+      <section class="app-section" id="assessment">
+        <div class="section-intro"><div><p class="eyebrow">ASSESSMENT / <span id="stepEyebrow">01</span></p><h2 id="stepTitle">先选目的地与计划</h2></div><p class="privacy-note">你的回答只保存在当前浏览器<br />不会上传，也不需要注册</p></div>
+        <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+        <div id="stepContainer"></div>
+      </section>
+
+      <section class="trust-strip"><div><span class="trust-number">01</span><strong>政策来源</strong><span>链接至各国政府官方页面</span></div><div><span class="trust-number">02</span><strong>本地暂存</strong><span>刷新后可以继续填写</span></div><div><span class="trust-number">03</span><strong>人话报告</strong><span>告诉你下一步准备什么</span></div></section>
+    </main>
+    <footer><span>© 2026 VISAFOLD</span><span>签证官模拟器 · 仅供信息参考</span><a href="#assessment">回到测评 ↑</a></footer>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
