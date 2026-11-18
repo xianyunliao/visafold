@@ -22,13 +22,19 @@ async function setup(browser, viewport) {
 const next = page => page.locator('[data-action="next"]').click();
 async function fill(page,overrides={}) {
   const values={...defaults,...overrides};
-  for (const select of await page.locator('select').all()) {
-    const name=await select.getAttribute('data-question');
+  const filled = new Set();
+  while (true) {
+    const names = await page.locator('select[data-question]').evaluateAll(selects=>selects.map(select=>select.dataset.question));
+    const name = names.find(id=>!filled.has(id));
+    if (!name) break;
+    filled.add(name);
+    const select = page.locator(`select[data-question="${name}"]`);
     const options=await select.locator('option').evaluateAll(options => options.map(o=>o.value));
-    const value=name.startsWith('doc:') ? name==='doc:student'?'ready':'missing' : values[name] || (options.includes('unknown')?'unknown':options[1]);
+    const value=values[name] || (name.startsWith('doc:') ? name==='doc:student'?'ready':'missing' : options.includes('unknown')?'unknown':options[1]);
     await select.selectOption(value);
   }
-  if (await page.locator('[data-multi]').count()) await page.locator('[data-multi][data-value="none"]').click();
+  const noHistory=page.locator('[data-multi][data-value="none"]');
+  if (await noHistory.count() && await noHistory.getAttribute('aria-pressed')!=='true') await noHistory.click();
   assert.equal(await page.locator('input,textarea,[contenteditable="true"]').count(),0,'questionnaire must never require typing');
 }
 async function complete(page,overrides={}) {
@@ -70,7 +76,8 @@ async function complete(page,overrides={}) {
     await page.locator('[data-action="edit"]').click();
     assert.match(await page.locator('#stepTitle').innerText(),/学习与个人/,'editing must leave result');
     await page.selectOption('#field-studentStatus','recent-grad');
-    await page.selectOption('#field-graduation','recent');
+    assert.equal(await page.locator('#field-graduation').count(),0);
+    if(await page.locator('#field-jpStudent').count()) await page.selectOption('#field-jpStudent','unknown');
     await next(page); await complete(page);
     assert.equal(await page.locator('.material-report h4').filter({hasText:'在读证明与返校安排'}).count(),0);
     assert.ok(await page.locator('.material-report h4').filter({hasText:'当前身份与回国安排'}).count());
@@ -82,6 +89,7 @@ async function complete(page,overrides={}) {
     assert.match(await page.locator('.result-card').innerText(),/免签/);
     assert.equal(await page.locator('.score').count(),0);
     assert.ok(await page.locator('.material-report h4').filter({hasText:'SG Arrival Card'}).count());
+    assert.equal(await page.locator('.material-report article').count(),3);
     assert.equal(errors.length,0,errors.join('\n'));
     await context.close();
 
@@ -112,6 +120,8 @@ async function complete(page,overrides={}) {
     await sgWh.page.locator('[data-type="working-holiday"]').click(); await next(sgWh.page);
     await complete(sgWh.page,{age:'22-29',sgAge:'26-29',studyRegion:'eligible',schoolResidence:'yes',tripPurpose:'employment',languageEvidence:'unknown',insurance:'unknown',whSlot:'unknown'});
     assert.match(await sgWh.page.locator('.result-card').innerText(),/18至25岁/);
+    assert.match(await sgWh.page.locator('.material-report').innerText(),/在读生院校材料.*本组各项都要准备/s);
+    assert.doesNotMatch(await sgWh.page.locator('.material-report').innerText(),/认可英语证据|全程医疗保险/);
     assert.equal(sgWh.errors.length,0,sgWh.errors.join('\n')); await sgWh.context.close();
     console.log('PASS: selection-only flow, validation, type navigation, persistence, editable reports, material recalculation, downloads, SG exemption, 29 Schengen countries, overstay limit, NZ/SG age boundaries, mobile layout, no page errors.');
   } finally {await browser.close();}

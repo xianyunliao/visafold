@@ -4,6 +4,17 @@
   'use strict';
   const source = (label, url, reviewedAt = null, scope = '申请细则待确认，请查看官方要求') => ({ label, url, reviewedAt, scope });
   const sources = {
+    jpStudent: source('日本驻华使馆 · 学生个人旅游简化', 'https://www.cn.emb-japan.go.jp/itpr_zh/20190101.html', '2026-11-18', '中国高校在读及毕业三年内本科、硕士、博士生的单次个人旅游经济能力证明简化；学校／学习形式等适用性及其余基础材料由受理方确认'),
+    krChengdu: source('韩国成都签证中心 · 签证申请及材料指引', 'https://www.koreavisa-cd.com/files/visadoc/%E7%AD%BE%E8%AF%81%E7%94%B3%E8%AF%B7%E5%8F%8A%E5%87%86%E5%A4%87%E6%9D%90%E6%96%99%E6%8C%87%E5%AF%BC_%202025.07.03.pdf', '2026-11-18', '公开2025-07-03版C-3-9：经济证明可选一类，另有学生或指定城市非集体户籍等免交路径；仅限对应成都领区与类别，递交前确认现行版本'),
+    sgEntry: source('新加坡ICA · 入境要求', 'https://www.ica.gov.sg/enter-transit-depart/entering-singapore', null, '按证件、身份及旅行史查询个性化入境要求'),
+    sgWhApply: source('新加坡MOM · 打工度假申请与材料', 'https://www.mom.gov.sg/passes-and-permits/work-holiday-programme/apply-for-a-pass', '2026-11-18', '毕业生学位或成绩单；在读生学校信函、学生证及适用时学生签证；翻译与获批后签发材料'),
+    sgEpDocs: source('新加坡MOM · EP所需材料', 'https://www.mom.gov.sg/passes-and-permits/employment-pass/documents-required', '2026-11-18', '护照、雇主ACRA资料；学历核验及职业附加文件按情况适用，不要求所有人提供同一套学历材料'),
+    ukWorkDocs: source('英国政府 · Skilled Worker申请材料', 'https://www.gov.uk/skilled-worker-visa/documents-you-must-provide', '2026-11-18', 'CoS、岗位及雇主信息、英语、身份；生活费可按资金或CoS雇主承担等适用路径证明；其他文件有条件适用'),
+    auVisit: source('澳大利亚驻华使馆 · 访客签证', 'https://china.embassy.gov.au/bjng/DIMA0301.html', '2026-11-18', '600签证按ImmiAccount个人清单递交，各人独立申请；此页面不提供完整个人材料要求'),
+    auWhDocs: source('澳大利亚驻华使馆 · 首次462中国申请人清单', 'https://china.embassy.gov.au/files/bjng/Checklist-462-Work-and-Holiday-China%20as%20at%2031%20Mar%202026_EN.pdf', '2026-11-18', '2026年3月版：身份、AUD5000及离境费用、学历路径、功能英语、健康及有条件的品行补件；各类别独立符合，类别内证明可有替代路径'),
+    auEnglish: source('澳大利亚内政部 · Functional English', 'https://immi.homeaffairs.gov.au/help-support/meeting-our-requirements/english-language/functional-english', '2026-11-18', '考试或满足年限的全英文授课经历等适用路径；考试接受范围按考试日期区分，不能用一般英语自评替代'),
+    ukWorkMoney: source('英国政府 · Skilled Worker生活费', 'https://www.gov.uk/skilled-worker-visa/how-much-it-costs', '2026-11-18', '通常本人GBP1270连续28天，末日距申请31天以内；CoS雇主确认承担或已持有效签证在英至少12个月可有相应豁免'),
+    nlDocs: source('荷兰政府 · 申根旅游材料清单', 'https://www.netherlandsworldwide.nl/visa-the-netherlands/checklist-schengen-visa-tourism', '2026-11-18', '按学生／在职身份区分材料；本人付费的3个月流水；住宿、行程及医疗保险，行程不要求已付款机票'),
     jp: source('日本驻华使馆 · 签证', 'https://www.cn.emb-japan.go.jp/itpr_zh/visa.html'),
     jpRegion: source('日本驻华使馆 · 领事信息', 'https://www.cn.emb-japan.go.jp/itpr_zh/consular.html', null, '领区及异地申请条件待确认，可向使领馆咨询'),
     jpWork: source('日本外务省 · 工作及长期居留', 'https://www.mofa.go.jp/j_info/visit/visa/long/index.html'),
@@ -16,6 +27,7 @@
     sgWh: source('新加坡 MOM · Work Holiday Programme', 'https://www.mom.gov.sg/passes-and-permits/work-holiday-programme/eligibility', '2026-11-18', '18至25岁；指定10个国家或地区的认可大学在读生或毕业生，并有全日制就读及居住要求'),
     sgWork: source('新加坡 MOM · Employment Pass', 'https://www.mom.gov.sg/passes-and-permits/employment-pass/eligibility', '2026-11-18', 'EP有薪资及COMPASS等条件；其他准证另行核对，不以一份Offer判定资格'),
     us: source('美国国务院 · 访客签证', 'https://travel.state.gov/content/travel/en/us-visas/tourism-visit/visitor.html'),
+    usDocs: source('美国国务院 · 访客面谈材料', 'https://travel.state.gov/content/travel/en/us-visas/tourism-visit/visitor.html', '2026-11-18', '面谈前的护照、DS-160确认页、适用时费用收据、上传失败时纸质照片；访问目的／资金／离境证据按情况，普通访客不要求邀请函或经济担保书；此处不代表面谈资格或当地流程已完整核实'),
     usWork: source('美国国务院 · 临时工作签证', 'https://travel.state.gov/content/travel/en/us-visas/employment/temporary-worker-visas.html'),
     uk: source('英国政府 · Standard Visitor', 'https://www.gov.uk/standard-visitor', '2026-11-17', '标准访客通常每次最多停留6个月；不能据此从事一般受雇工作'),
     ukDocs: source('英国政府 · 访客材料指引', 'https://www.gov.uk/government/publications/visitor-visa-guide-to-supporting-documents/guide-to-supporting-documents-visiting-the-uk', '2026-11-18', '学生证明、资金来源、第三方资助关系及支持能力；材料示例不等于人人必须提交'),
@@ -66,8 +78,9 @@
     { id: 'offer-work', title: '已有 Offer · 工作', en: 'EMPLOYMENT', description: '已获得当地雇主的聘用意向或合同' },
   ];
   const workSources = { japan:'jpWork', korea:'kr', singapore:'sgWork', usa:'usWork', uk:'ukWork', australia:'auWork', 'new-zealand':'nzWork', schengen:'euWork' };
+  const workRoutes = { singapore:{id:'ep',label:'Employment Pass (EP)'}, uk:{id:'skilled-worker',label:'Skilled Worker'}, 'new-zealand':{id:'aewv',label:'Accredited Employer Work Visa (AEWV)'} };
   const holidaySources = { japan:'jpWh', korea:'krWh', singapore:'sgWh', usa:'usWork', uk:'ukWh', australia:'auWh', 'new-zealand':'nzWh', schengen:'euWork' };
-  const data = { version: 2, reviewedAt: '2026-11-18', countries, schengen, provinces, types, sources, workSources, holidaySources };
+  const data = { version: 3, reviewedAt: '2026-11-18', countries, schengen, provinces, types, sources, workSources, workRoutes, holidaySources };
   if (typeof module !== 'undefined' && module.exports) module.exports = data;
   else root.VisaPolicies = data;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

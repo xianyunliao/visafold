@@ -54,9 +54,11 @@ test('hukou changes routing context without inventing regional approval rates', 
   assert.ok(changed.materials.some(m => m.id === 'residence'));
 });
 test('parent funding produces relationship and sponsor evidence; self funding differs', () => {
-  const parent = evaluate({}); const self = evaluate({ funding:'self' });
-  assert.ok(parent.materials.some(m => m.id === 'sponsor'));
-  assert.ok(parent.materials.some(m => m.id === 'sponsorFunds'));
+  const parent = evaluate({country:'uk'}); const self = evaluate({country:'uk',funding:'self'});
+  const sponsor = parent.materials.find(m => m.id === 'sponsor');
+  assert.equal(sponsor.mode,'all');
+  assert.equal(sponsor.requirements.length,3);
+  assert.ok(!parent.materials.some(m => m.id === 'sponsorFunds'));
   assert.ok(self.materials.some(m => m.id === 'ownFunds'));
   assert.ok(!self.materials.some(m => m.id === 'sponsor'));
   assert.notDeepEqual(parent.notes,evaluate({ incomeFamily:'under15' }).notes);
@@ -118,4 +120,71 @@ test('all important risks survive, and near-date Schengen reports explain uncert
   assert.ok(r.notes.length > 4);
   for (const id of ['rolling-limit','history','funds','time-short']) assert.ok(r.notes.some(n => n.id===id));
   assert.ok(r.sources.every(s => s.url?.startsWith('https://') && s.scope));
+});
+
+
+test('alternative evidence counts once and only a named applicable path can be marked ready', () => {
+  const nz = {...base,country:'new-zealand'};
+  assert.equal(E.buildReport(nz,{nzFinance:'ready'}).materials.find(m=>m.id==='nzFinance').status,'unknown');
+  const report=E.buildReport(nz,{nzFinance:'ready:prepaid',departure:'ready:funds'});
+  assert.equal(report.ready,2);
+  assert.match(report.materials.find(m=>m.id==='nzFinance').chosen,/预付.*400/);
+  assert.match(report.materials.find(m=>m.id==='departure').chosen,/额外购票资金/);
+  assert.equal(E.buildReport(nz,{nzFinance:'ready:invalid'}).ready,0);
+});
+test('working holiday checklists use destination and student status without repeating eligibility answers', () => {
+  const sg = {...base,country:'singapore',type:'working-holiday'};
+  const student = E.materialPlan(sg).find(m=>m.id==='whUniversity');
+  assert.equal(student.mode,'all');
+  assert.match(student.requirements.map(r=>r.label).join(' '),/大学信函.*学生证/);
+  assert.equal(E.materialPlan({...sg,studentStatus:'recent-grad'}).find(m=>m.id==='whUniversity').mode,'any');
+  assert.ok(!E.materialPlan(sg).some(m=>['whLanguage','whInsurance','whFunds'].includes(m.id)));
+  const nz={...sg,country:'new-zealand',highSchool:'yes',whFunds:'yes',languageEvidence:'yes',insurance:'no'};
+  const r=E.buildReport(nz,{whInsurance:'ready'});
+  assert.equal(r.materials.find(m=>m.id==='whEducation').status,'ready');
+  assert.equal(r.materials.find(m=>m.id==='whInsurance').status,'missing');
+  const au=E.materialPlan({...sg,country:'australia'});
+  assert.equal(au.find(m=>m.id==='whEducation').requirements.length,3);
+  assert.equal(au.find(m=>m.id==='whLanguage').mode,'any');
+  assert.ok(au.some(m=>m.id==='whFunds'));
+});
+test('national and work category rules stay scoped to the applicable route', () => {
+  const nl={...base,country:'schengen',schengenCountry:'nl',funding:'self',studentStatus:'student'};
+  const groups=E.materialPlan(nl);
+  assert.equal(groups.find(m=>m.id==='insurance').mode,'all');
+  assert.ok(groups.some(m=>m.id==='nlFunds'));
+  assert.ok(!groups.some(m=>m.id==='ownFunds'));
+  assert.ok(!E.materialPlan({...nl,schengenCountry:'fr'}).some(m=>m.id==='nlFunds'));
+  const work={...base,type:'offer-work',country:'uk'};
+  assert.ok(!E.materialPlan({...work,workCategory:'unknown'}).some(m=>m.id==='maintenance'));
+  assert.ok(E.materialPlan({...work,workCategory:'skilled-worker'}).some(m=>m.id==='maintenance'&&m.mode==='any'));
+  const short=E.materialPlan({...base,country:'singapore'});
+  assert.deepEqual(short.map(m=>m.id),['passport','arrival','entryPlan']);
+  assert.deepEqual(E.materialPlan({...base,country:'singapore',days:'31-90'}).map(m=>m.id),['visitPermit']);
+});
+
+test('Japanese student simplification removes economic documents only for an eligible single tourism route', () => {
+  const single={...base,jpStudent:'yes'};
+  const r=E.buildReport(single);
+  assert.ok(r.materials.some(m=>m.id==='jpStudent'));
+  assert.ok(!r.materials.some(m=>m.id==='financial'));
+  assert.ok(!r.assessment.factors.some(f=>['income','funding'].includes(f.id)));
+  for(const changes of [{entry:'multiple'},{education:'college'},{jpStudent:'unknown'},{tripPurpose:'visiting'},{studentStatus:'other'}]) {
+    const groups=E.materialPlan({...single,...changes});
+    assert.ok(!groups.some(m=>m.id==='jpStudent'));
+    assert.ok(groups.some(m=>m.id==='financial'));
+  }
+});
+test('Korean C-3-9 alternative proofs remain limited to Chengdu single tourism', () => {
+  const local={...base,country:'korea',krConsulate:'chengdu'};
+  const group=E.materialPlan(local).find(m=>m.id==='krFinancial');
+  assert.equal(group.mode,'any');
+  assert.ok(group.requirements.some(r=>r.id==='student'));
+  assert.ok(!group.requirements.some(r=>r.id==='hukou'));
+  assert.ok(E.materialPlan({...local,province:'北京',krHukouType:'ordinary'}).find(m=>m.id==='krFinancial').requirements.some(r=>r.id==='hukou'));
+  assert.ok(!E.materialPlan({...local,province:'北京',krHukouType:'collective'}).find(m=>m.id==='krFinancial').requirements.some(r=>r.id==='hukou'));
+  assert.ok(!E.materialPlan({...local,studentStatus:'recent-grad'}).find(m=>m.id==='krFinancial').requirements.some(r=>r.id==='student'));
+  for(const changes of [{entry:'multiple'},{krConsulate:'other'},{krConsulate:'unknown'},{tripPurpose:'visiting'}]) {
+    assert.ok(!E.materialPlan({...local,...changes}).some(m=>m.id==='krFinancial'));
+  }
 });

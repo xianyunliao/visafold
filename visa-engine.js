@@ -1,12 +1,32 @@
 (function (root) {
   'use strict';
   const P = typeof module !== 'undefined' && module.exports ? require('./policy-data.js') : root.VisaPolicies;
+  const M = typeof module !== 'undefined' && module.exports ? require('./material-rules.js') : root.VisaMaterials;
   const unknown = value => !value || value === 'unknown';
   const tourism = a => a.type === 'tourism';
   const mainSource = a => a.type === 'offer-work' ? a.country === 'schengen' && P.schengen.some(c => c.id === a.schengenCountry) ? `schengen-${a.schengenCountry}` : P.workSources[a.country] : a.type === 'working-holiday' ? P.holidaySources[a.country] : P.countries.find(c => c.id === a.country)?.sourceId;
   const holidaySupported = a => ['australia', 'new-zealand', 'singapore'].includes(a.country);
+  function normalizeAnswers(a) {
+    const clean = {...a};
+    delete clean.companions; delete clean.domesticTies;
+    if (a.studentStatus !== 'student') delete clean.graduation;
+    if (a.funding !== 'self') delete clean.incomeSelf;
+    if (!['parents','shared'].includes(a.funding)) delete clean.incomeFamily;
+    if (a.country !== 'singapore' || a.type !== 'working-holiday') delete clean.studyRegion;
+    if (a.country === 'singapore' && a.type === 'working-holiday') delete clean.whSlot;
+    if (M.japanStudentRoute(clean)) { for (const key of ['funding','incomeSelf','incomeFamily']) delete clean[key]; }
+    if (a.country === 'singapore' && a.type === 'tourism') {
+      for (const key of ['province','residence','applyAt','residenceProof','residenceDuration','studentStatus','education','graduation','funding','incomeSelf','incomeFamily','history','entry','budget']) delete clean[key];
+    }
+    if (a.country !== 'new-zealand' || a.type !== 'working-holiday') {
+      for (const key of ['languageEvidence','insurance','whFunds','highSchool','previousWh']) delete clean[key];
+    }
+    if (a.type !== 'tourism') { delete clean.tripPurpose; delete clean.entry; delete clean.returnPlan; }
+    return clean;
+  }
 
   function eligibility(a) {
+    a = normalizeAnswers(a);
     const reasons = [];
     const pending = [];
     const refs = [mainSource(a)];
@@ -37,7 +57,7 @@
           if (a[key] !== 'yes' && !(key === 'previousWh' && a[key] === 'no')) pending.push(`${label}仍需准备或核对。`);
         }
       }
-      if (a.country === 'australia') pending.push('澳大利亚462的当期抽签、年龄、学历、英语、资金和名额条件仍待确认，请先查看官方申请要求。');
+      if (a.country === 'australia') pending.push('澳大利亚462的学历、英语和资金证明可按下方中国申请人清单准备；当期抽签邀请、年龄及个案条件仍需逐项确认。');
     }
     if (tourism(a)) {
       if (a.country === 'singapore') {
@@ -58,10 +78,10 @@
     }
     if (a.type === 'offer-work') {
       if (a.offer === 'none' || a.offer === 'verbal') reasons.push('请先取得正式的书面聘用文件，再核对工作签证申请条件。');
-      pending.push('有Offer不等于可获工作许可；具体签证类别、雇主资格、岗位、薪资、学历和其他要求均须按官方规则核对。');
+      pending.push('有Offer不等于可获工作许可；具体签证类别、雇主资格、岗位及个人条件均须按官方规则核对。');
       if (a.sponsor !== 'yes') pending.push('雇主担保／认证／申请资格未确认。');
       if (a.salaryCheck !== 'yes') pending.push('岗位及薪资是否适用该类别的要求未确认。');
-      if (a.workCategory !== 'known' || a.qualification !== 'ready') pending.push('具体签证类别及个人学历、经验、语言或职业注册仍需逐项核对。');
+      if (unknown(a.workCategory) || a.qualification !== 'ready') pending.push('具体签证类别及个人学历、经验、语言或职业注册仍需逐项核对。');
       if (a.country === 'schengen') pending.push('申根短期签证不授予统一工作资格，需要申请所选国家的工作签证／居留许可。');
     }
     if (reasons.length) return { code: 'blocked', title: '当前计划需要调整', reasons: [...reasons, ...pending], refs };
@@ -69,43 +89,13 @@
     return { code: a.country === 'singapore' && tourism(a) ? 'exempt' : 'initial', title: a.country === 'singapore' && tourism(a) ? '可按短期免签准备入境' : '可继续核对材料与申请条件', reasons: [a.country === 'singapore' && tourism(a) ? '你的计划可参考30天以内短期旅游免签安排。出发前请确认入境所需材料；如计划工作，需另办相应许可。' : '根据你选择的情况，可以继续准备材料。请同时确认该类别的完整申请条件、开放名额及健康和品行要求。'], refs };
   }
 
-  function materialPlan(a) {
-    const src = mainSource(a);
-    const items = [];
-    const add = (id, title, detail, refs = [src], kind = '建议核对') => items.push({ id, title, detail, refs, kind });
-    add('passport', '护照与身份材料', '本人核对护照有效期、空白页和身份信息。未办理护照时，先通过国家移民管理局／当地出入境管理机构了解办理要求。');
-    const sgExempt = a.country === 'singapore' && tourism(a) && ['1-7','8-15','16-30'].includes(a.days) && a.tripPurpose === 'tourism';
-    if (!sgExempt) add('application', '申请表、照片与申请账号', '在官方申请页面确认表格、照片规格、费用、预约和递交方式。');
-    if (sgExempt) add('arrival', 'SG Arrival Card 与入境事项', '通常在抵达前3天内（含抵达日）通过ICA官方入口提交。入境卡免费且不是签证；同时核对护照、返程和入境要求。', ['sgArrival','sg'], '官方要求／说明');
-    if (a.studentStatus === 'student') add('student', '在读证明与返校安排', '向学校教务处／学生事务部门咨询：姓名、学籍、课程／年级、假期和返校安排、签章及联系方式。翻译、格式和有效期按受理方清单确认。');
-    else add('status', '当前身份与回国安排', a.studentStatus === 'recent-grad' ? '准备毕业证明，以及工作、继续升学或其他旅行后的安排说明。' : '按目前情况准备在职、经营、学习或其他身份及后续安排说明。');
-    if (['parents','shared','other'].includes(a.funding)) {
-      add('sponsor', '出资说明与资助关系', `${a.funding === 'parents' ? '父母' : '资助人'}的资助范围、关系及支持意愿；核对是否需要户口簿、出生证明等关系材料，以及是否需要翻译或公证。`, a.country === 'uk' ? ['ukDocs'] : [src]);
-      add('sponsorFunds', '出资人的资金来源材料', '准备出资人的银行流水、收入或其他资金来源证明。账户如有大额转入，也请保留相应的来源说明。', a.country === 'uk' ? ['ukDocs'] : [src]);
-    }
-    if (['self','shared','scholarship'].includes(a.funding)) add('ownFunds', '本人可使用资金及来源', a.funding === 'scholarship' ? '准备奖学金／补助证明、到账记录，并确认可使用的金额与范围。' : '准备本人银行流水、存款及资金来源证明，确认可用金额能覆盖行程费用。');
-    add('itinerary', a.type === 'offer-work' ? '赴任及住宿安排' : '行程、住宿与离境计划', '准备与出行目的、假期、预算一致的安排。是否需已付款机票／酒店按官方清单核对，付款前留意退改政策。');
-    if (a.tripPurpose === 'visiting' || a.relatives === 'host') add('invitation', '邀请与住宿关系说明', '说明访问对象、关系、停留地点及费用承担，按对应类别准备邀请函及邀请人材料。');
-    if (a.residence && (a.residence !== a.province || a.applyAt !== 'residence')) add('residence', '实际居住／异地申请证明', '准备学校在读与住宿、居住证或境外合法居留等相应证据，并向受理方确认可接受的材料及居住时长。户籍和常住地不是同一概念。', a.country === 'schengen' ? ['eu'] : a.country === 'japan' ? ['jpRegion'] : [src]);
-    if (a.country === 'schengen' && tourism(a)) add('insurance', '申根旅游医疗保险', '按所选国家官方清单确认承保范围、额度和有效日期；欧盟指引要求涵盖紧急医疗、住院和遣返等风险。', ['eu'], '官方要求／说明');
-    if (a.type === 'working-holiday') {
-      add('whEducation', '学历与语言资格证据', '查看项目接受的学历认证、语言考试和院校经历，准备相应证明。');
-      add('whFunds', '项目资金、保险与名额', a.country === 'new-zealand' ? '核对至少NZD4,200生活资金、离境费用、全程医疗保险、年度名额和开放状态。' : '逐项打开项目官方页核对当期资金、保险、年龄和名额要求。');
-    }
-    if (a.type === 'offer-work') {
-      add('contract', '聘用合同与岗位信息', '核对雇主主体、职位、职责、工作时长、薪资、期限及签署情况；Offer和工作许可是不同文件。');
-      add('sponsorship', '雇主资格与申请类别', '让雇主确认适用工作签证／居留类别、担保或认证、岗位审核及双方递交责任。');
-      add('qualification', '岗位所需学历、经验与注册', '按具体类别准备学历、工作经验、语言、职业注册或资格认证材料。');
-    }
-    if (a.country === 'usa') add('interview', '美国申请与面谈准备', '从国务院及使领馆官方入口确认适用流程；是否需要面谈或可免面谈，以当期规则和你的情况为准。');
-    if (a.refusal === 'yes' || a.overstay === 'yes') add('history', '既往记录说明', '保留拒签、取消签证或逾期记录文件，说明后续情况变化，并按申请表要求如实填写。');
-    return items;
-  }
+  const materialPlan = a => M.plan(normalizeAnswers(a));
+  const japanStudentRoute = a => M.japanStudentRoute(a);
 
   function jurisdiction(a) {
     const residence = a.residence === 'overseas' ? '境外合法居住地' : a.residence;
     const chosen = a.applyAt === 'hukou' ? a.province : a.applyAt === 'residence' ? residence : a.applyAt === 'overseas' ? '境外拟申请地' : '其他拟申请地';
-    const details = [`户籍：${a.province || '待选择'}；实际常住：${residence || '待选择'}；拟递交：${chosen || '待选择'}。`];
+    const details = [`${a.province?`户籍：${a.province}；`:''}实际常住：${residence || '待选择'}；拟递交：${chosen || '待选择'}。`];
     let title = '受理地点需按官方规则确认';
     const refs = [mainSource(a)];
     if (a.country === 'schengen') {
@@ -126,13 +116,17 @@
     } else {
       details.push('在官方申请页面确认递交方式、预约及生物信息采集地点，并核对当地申请所需的居住身份。');
     }
-    if (a.residence !== a.province || a.applyAt === 'other' || a.applyAt === 'overseas') details.push('存在户籍与居住地／拟申请地差异：先确认受理资格和证明，再缴费、预约或寄送材料。');
-    if (a.residenceProof !== 'ready') details.push('居住依据尚待确认：可咨询在读／住宿证明、居住证或境外合法居留材料，具体接受范围由受理方决定。');
-    if (a.residenceDuration === 'short') details.push('你在现常住地居住不足3个月，请先确认受理方的居住时长要求，以及是否接受在读证明。');
+    const localDifference = ['japan','korea'].includes(a.country) && a.province && a.residence !== a.province;
+    if (localDifference || a.applyAt === 'other' || a.applyAt === 'overseas') {
+      details.push('常住或拟递交地点与户籍／通常受理地点不同，请先确认当地受理资格。');
+      if (a.residenceProof !== 'ready') details.push('居住依据尚待确认：可咨询在读／住宿证明、居住证或境外合法居留材料，具体接受范围由受理方决定。');
+      if (localDifference && a.residenceDuration === 'short') details.push('你在现常住地居住不足3个月，请先确认受理方的居住时长要求，以及是否接受在读证明。');
+    }
     return { title, details, refs };
   }
 
   function scoreAssessment(a, result = eligibility(a)) {
+    a = normalizeAnswers(a);
     const base = 48;
     const factors = [];
     const add = (id, label, points, detail = '', refs = []) => factors.push({ id, label, points, detail, refs });
@@ -148,9 +142,11 @@
     const income = a.funding === 'self' ? {under10:1,'10-30':3,'30+':4}[a.incomeSelf] : ['parents','shared'].includes(a.funding) ? {under15:1,'15-30':2,'30-60':3,'60+':4}[a.incomeFamily] : 0;
     if (income && a.availableFunds === 'enough') add('income', '出资人的收入支持', income, '年收入需结合本次可使用资金及来源证明一起说明。');
     if (a.funding === 'parents' || a.funding === 'shared') add('funding', '父母资助路径明确', 3, '准备关系证明、资助说明和出资人的资金材料。');
-    if (a.returnPlan === 'clear') add('return', '离境／返校安排明确', 6);
-    else if (a.returnPlan === 'none' || unknown(a.returnPlan)) add('return', '离境安排待完善', -5);
-    if (['study','work'].includes(a.domesticTies)) add('ties', '旅行后的安排清晰', 3);
+    if (M.japanStudentRoute(a)) add('jp-student-route', '适用日本学生简化路径', 6, '根据你的选择，符合单次个人旅游学生简化范围；经济能力证明可按该路径简化，基础材料仍需准备。', ['jpStudent']);
+    if (tourism(a)) {
+      if (a.returnPlan === 'clear') add('return', '离境／返校安排明确', 6);
+      else if (a.returnPlan === 'none' || unknown(a.returnPlan)) add('return', '离境安排待完善', -5);
+    }
     const history = Array.isArray(a.history) ? a.history : [];
     if (!history.includes('none') && a.overstay === 'no') {
       if (history.some(h => ['usa','uk','schengen','anz'].includes(h))) add('history', '有相关出境经历', 8, '按申请要求提供既往签证及出入境记录。');
@@ -200,16 +196,18 @@
   }
 
   function buildReport(a, prepared = {}, now = new Date()) {
+    a = normalizeAnswers(a);
     const result = eligibility(a);
-    const materials = materialPlan(a).map(item => ({ ...item, status: ['ready','missing','unknown'].includes(prepared[item.id]) ? prepared[item.id] : 'unknown' }));
+    const materials = materialPlan(a).map(item => M.resolve(item, a, prepared));
     const notes = [];
     const add = (id, text, refs = [mainSource(a)], priority = 'notice', basis = '准备建议') => notes.push({ id, text, refs, priority, basis });
-    if (a.studentStatus === 'student') add('student', '在校期间可重点准备在读证明、假期及返校安排，并说明旅行费用的来源。');
+    if (M.japanStudentRoute(a)) add('jp-student', '你选择了日本单次个人旅游学生简化路径。符合适用条件时可免交经济能力证明，其余基础申请文件仍需准备。', ['jpStudent'], 'notice', '学生简化');
+    if (a.type === 'tourism' && a.studentStatus === 'student') add('student', '在校期间可重点准备在读证明、假期及返校安排，并说明旅行费用的来源。');
     if (a.graduation === 'soon') add('graduation', '接近毕业时，请核对旅行期间是否仍在读、是否还能使用学生材料，并用真实的毕业后安排解释行程；不能默认继续适用在读生简化条件。');
     if (a.funding === 'parents' || a.funding === 'shared') add('parents', '由父母出资时，准备亲属关系、资助说明和父母的资金来源材料，确认本次可使用的金额。');
     if (a.funding === 'other') add('other-funder', '非父母资助需要解释关系、资助原因和资金能力，核对是否可被该类别接受。');
     if (a.availableFunds === 'short' || a.availableFunds === 'unknown') add('funds', '本次可支配资金与费用覆盖尚未说明，先列出交通、住宿、生活及应急费用，核对真实资金可用性；年收入不能替代账户资金证据。', undefined, 'important');
-    if (a.incomeFamily === 'unknown' || a.incomeSelf === 'unknown') add('income-unknown', '如果暂不清楚收入情况，可以先与出资人确认本次可使用的资金及证明材料。');
+    if (a.funding === 'self' && a.incomeSelf === 'unknown' || ['parents','shared'].includes(a.funding) && a.incomeFamily === 'unknown') add('income-unknown', '如果暂不清楚收入情况，可以先与出资人确认本次可使用的资金及证明材料。');
     const familyIncome = {under15:'15万元以下','15-30':'15–30万元','30-60':'30–60万元','60+':'60万元以上'}[a.incomeFamily];
     if (familyIncome && ['parents','shared','other'].includes(a.funding)) add('income-context', `你选择的家庭年收入为${familyIncome}。请结合本次预算，与出资人确认可使用的金额和对应资金证明。`);
     if (a.funding === 'self' && a.incomeSelf === 'none') add('self-source', '本人出资但无固定收入：可如实说明存款、奖学金或既往资助来源，并提供相应证据。');
@@ -218,7 +216,7 @@
     if (a.overstay === 'yes' || a.refusal === 'yes') add('history', '既往拒签、取消或逾期记录需要按要求如实披露并解释变化；必要时向官方或有资质人士咨询。', undefined, 'important');
     if (a.refusal === 'unknown' || a.overstay === 'unknown') add('history-unknown', '请先核对既往签证及出入境记录，确认申请表中需要说明的事项。', undefined, 'important');
     if (a.entry === 'multiple') add('entry', '如需多次入境，请核对对应类别的申请条件，并说明重复出行的需要。签证有效期与每次允许停留时间应分别确认。');
-    if (a.returnPlan !== 'clear') add('return', '建议用返校、考试、工作或其他真实安排解释离境计划，是否需要提交已出票机票，请以官方材料清单为准。');
+    if (a.type === 'tourism' && a.returnPlan !== 'clear') add('return', '建议用返校、考试、工作或其他真实安排解释离境计划，是否需要提交已出票机票，请以官方材料清单为准。');
     if (a.domesticTies === 'property') add('property', '家庭房产不等于申请人本人资产，也不能替代资金、在读或真实行程材料。');
     if (a.relatives === 'host' || a.tripPurpose === 'visiting') add('host', '访问亲友和住宿关系可能改变材料要求，需按实际目的核对访问类别。');
     if (a.companions === 'friends') add('companions', '和朋友同行时可保持主要行程一致，但每个人仍需独立满足申请和材料要求。');
@@ -233,9 +231,9 @@
       }
     }
     if (a.departure === 'unknown') add('date-unknown', '出发月份未确定，暂不能判断递交窗口、预约或材料有效期。');
-    const region = jurisdiction(a);
+    const region = a.country === 'singapore' && tourism(a) ? {title:'按本次行程核对入境要求',details:['符合30天内普通旅游免签时无需递交旅游签证；出发前按ICA指引确认护照、入境申报及行程要求。'],refs:['sg','sgArrival','sgEntry']} : jurisdiction(a);
     const assessment = scoreAssessment(a, result);
-    const sourceIds = [...new Set([mainSource(a), ...result.refs, ...region.refs, ...assessment.factors.flatMap(f => f.refs), ...notes.flatMap(n => n.refs), ...materials.flatMap(m => m.refs)].filter(Boolean))];
+    const sourceIds = [...new Set([mainSource(a), ...result.refs, ...region.refs, ...assessment.factors.flatMap(f => f.refs), ...notes.flatMap(n => n.refs), ...materials.flatMap(m => m.refs)].filter(id => P.sources[id]))];
     const sources = sourceIds.map(id => ({ id, ...P.sources[id] }));
     if (a.country === 'schengen') {
       const selected = P.schengen.find(c => c.id === a.schengenCountry);
@@ -251,7 +249,7 @@
     return { generatedAt: new Date(now).toISOString(), assessment, eligibility: result, materials, notes, region, sources, ready, total: materials.length, actions };
   }
 
-  const api = { eligibility, materialPlan, jurisdiction, scoreAssessment, buildReport, holidaySupported, mainSource };
+  const api = { eligibility, materialPlan, jurisdiction, scoreAssessment, buildReport, holidaySupported, mainSource, japanStudentRoute };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.VisaEngine = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);
