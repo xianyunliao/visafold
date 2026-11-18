@@ -5,10 +5,47 @@ const E = require('../visa-engine.js');
 const base = { country:'japan', type:'tourism', age:'18-22', passportType:'ordinary', passport:'yes', studentStatus:'student', education:'bachelor', studyRegion:'mainland', province:'四川', residence:'四川', residenceProof:'ready', residenceDuration:'long', applyAt:'residence', funding:'parents', incomeSelf:'none', incomeFamily:'30-60', budget:'medium', availableFunds:'enough', departure:'2027-07', days:'8-15', tripPurpose:'tourism', entry:'single', history:['none'], refusal:'no', overstay:'no', returnPlan:'clear', companions:'friends' };
 const evaluate = changes => E.buildReport({ ...base, ...changes }, {}, new Date('2026-11-18T04:00:00Z'));
 
-test('old fabricated approval scores are absent; unknown data cannot confirm eligibility', () => {
-  assert.equal('score' in evaluate({}), false);
+test('reference scoring is explicit and unknown data cannot confirm eligibility', () => {
+  const r = evaluate({});
+  assert.equal(typeof r.assessment.value, 'number');
+  assert.match(r.assessment.note,/不代表实际获签概率/);
+  assert.equal(r.assessment.value, r.assessment.base + r.assessment.factors.reduce((sum, f) => sum + f.points, 0));
   assert.equal(E.eligibility({}).code, 'pending');
   assert.match(evaluate({}).eligibility.title, /待确认/);
+});
+test('Japan and Korea award a disclosed bonus only for confirmed hukou convenience', () => {
+  for (const country of ['japan','korea']) {
+    const ordinary = evaluate({country,regionalPolicy:'unknown'}).assessment;
+    const confirmed = evaluate({country,regionalPolicy:'confirmed'}).assessment;
+    assert.equal(confirmed.value - ordinary.value,6);
+    const bonus = confirmed.factors.find(f=>f.id === 'hukou-benefit');
+    assert.equal(bonus.points,6);
+    assert.match(bonus.detail,/根据你的选择/);
+    assert.ok(bonus.refs.length);
+    assert.ok(!ordinary.factors.some(f=>f.id === 'hukou-benefit'));
+  }
+  assert.equal(evaluate({country:'uk',regionalPolicy:'confirmed'}).assessment.value,evaluate({country:'uk'}).assessment.value);
+  assert.equal(evaluate({province:'上海',residence:'上海'}).assessment.value,evaluate({province:'四川',residence:'四川'}).assessment.value);
+});
+test('background score responds to funding, history and work evidence; materials remain supplementary', () => {
+  assert.ok(evaluate({availableFunds:'enough'}).assessment.value > evaluate({availableFunds:'short'}).assessment.value);
+  assert.ok(evaluate({history:['usa']}).assessment.value > evaluate({history:['none']}).assessment.value);
+  assert.ok(evaluate({refusal:'no'}).assessment.value > evaluate({refusal:'yes'}).assessment.value);
+  const unprepared = E.buildReport(base,{});
+  const prepared = E.buildReport(base,Object.fromEntries(E.materialPlan(base).map(m=>[m.id,'ready'])));
+  assert.deepEqual(unprepared.assessment,prepared.assessment);
+  assert.ok(prepared.ready>unprepared.ready);
+  assert.ok(evaluate({type:'offer-work',offer:'signed',sponsor:'yes',salaryCheck:'yes',qualification:'ready'}).assessment.value > evaluate({type:'offer-work',offer:'written',sponsor:'unknown',salaryCheck:'unknown',qualification:'unknown'}).assessment.value);
+});
+test('hard eligibility limits control scores and exemption or unsupported routes do not invent one', () => {
+  assert.ok(evaluate({country:'schengen',schengenCountry:'fr',days:'91-180',history:['usa'],regionalPolicy:'confirmed'}).assessment.value<=25);
+  assert.equal(evaluate({country:'japan',type:'working-holiday'}).assessment.value,null);
+  assert.equal(evaluate({country:'singapore'}).assessment.value,null);
+  for (const changes of [{history:['usa'],domesticTies:'study',regionalPolicy:'confirmed'},{passport:'no',availableFunds:'short',refusal:'yes',overstay:'yes',returnPlan:'none'},{country:'uk',history:['usa'],domesticTies:'study'}]) {
+    const a = evaluate(changes).assessment;
+    assert.ok(a.value>=0 && a.value<=100);
+    assert.equal(a.value,a.base+a.factors.reduce((sum,f)=>sum+f.points,0));
+  }
 });
 test('hukou changes routing context without inventing regional approval rates', () => {
   const original = evaluate({}); const changed = evaluate({ province:'上海', residence:'四川' });

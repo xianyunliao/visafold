@@ -55,7 +55,9 @@ async function complete(page,overrides={}) {
     await next(page); await complete(page);
     assert.ok((await page.locator('.material-report').innerText()).includes('父母'));
     assert.match(await page.locator('.report-section').first().innerText(),/户籍：四川.*常住：上海/);
-    assert.equal(await page.locator('.score').count(),0);
+    assert.equal(await page.locator('.score').count(),1);
+    assert.match(await page.locator('.score').innerText(),/^\d+$/);
+    assert.match(await page.locator('.score-factors').innerText(),/户籍与常住申请地一致|异地申请依据/);
     await page.screenshot({path:'/tmp/visafold-v2-desktop.png',fullPage:true,animations:'disabled'});
     const downloadPromise=page.waitForEvent('download');
     await page.locator('[data-action="download"]').click();
@@ -77,7 +79,8 @@ async function complete(page,overrides={}) {
     await page.locator('[data-action="back"]').click();
     await page.locator('[data-country="singapore"]').click(); await next(page);
     await page.locator('[data-type="tourism"]').click(); await next(page); await complete(page);
-    assert.match(await page.locator('.result-card h3').innerText(),/免签/);
+    assert.match(await page.locator('.result-card').innerText(),/免签/);
+    assert.equal(await page.locator('.score').count(),0);
     assert.ok(await page.locator('.material-report h4').filter({hasText:'SG Arrival Card'}).count());
     assert.equal(errors.length,0,errors.join('\n'));
     await context.close();
@@ -89,7 +92,8 @@ async function complete(page,overrides={}) {
     await mobile.page.selectOption('#field-schengenCountry','fr'); await next(mobile.page);
     await mobile.page.locator('[data-type="tourism"]').click(); await next(mobile.page);
     await complete(mobile.page,{mainDestination:'longest',schengenPrior:'within',days:'91-180'});
-    assert.match(await mobile.page.locator('.result-card h3').innerText(),/需要调整/);
+    assert.match(await mobile.page.locator('.result-card').innerText(),/需要调整/);
+    assert.ok(Number(await mobile.page.locator('.score').innerText())<=25);
     assert.ok((await mobile.page.locator('.result-card').innerText()).includes('超过90天'));
     assert.ok(await mobile.page.locator('a').filter({hasText:'法国'}).count());
     assert.equal(await mobile.page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false,'mobile must not overflow horizontally');

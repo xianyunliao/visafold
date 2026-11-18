@@ -11,12 +11,12 @@
     const pending = [];
     const refs = [mainSource(a)];
     if (!a.country || !a.type || !a.age) pending.push('目的地、申请类型或年龄信息不完整。');
-    if (a.passportType === 'other') reasons.push('此工具仅适用于中国大陆普通护照；请按实际护照重新查询。');
+    if (a.passportType === 'other') reasons.push('当前测评适用于中国大陆普通护照，请按你持有的证件查询相应申请条件。');
     if (a.passport === 'no') reasons.push('先办理或更新护照，再核对该路径。');
     if (unknown(a.passport) || unknown(a.passportType)) pending.push('护照类型或有效性尚未确认。');
     if (a.type === 'working-holiday') {
       if (!holidaySupported(a)) {
-        return { code: a.country === 'uk' ? 'blocked' : 'unsupported', title: a.country === 'uk' ? '当前护照不适用该项目' : '暂不提供此路径的资格判断', reasons: [...reasons, a.country === 'uk' ? '英国YMS当前国籍／护照清单不包含中国大陆普通护照。' : '当前没有配置适用于中国大陆普通护照且已核验的打工度假项目，不能用旅游或工作材料替代资格条件。'], refs };
+        return { code: a.country === 'uk' ? 'blocked' : 'unsupported', title: a.country === 'uk' ? '当前护照不适用该项目' : '该项目暂不支持测评', reasons: [...reasons, a.country === 'uk' ? '英国YMS当前国籍／护照清单不包含中国大陆普通护照。' : '该目的地的打工度假暂不支持测评，请通过官方页面了解适用项目及条件。'], refs };
       }
       if (a.country === 'singapore') {
         if (a.age === '18-22' && unknown(a.studyRegion)) pending.push('院校所在地区未确认。');
@@ -37,12 +37,12 @@
           if (a[key] !== 'yes' && !(key === 'previousWh' && a[key] === 'no')) pending.push(`${label}仍需准备或核对。`);
         }
       }
-      if (a.country === 'australia') pending.push('462页面正文未完整核验：请先确认当期中国申请人抽签、年龄、学历、英语、资金和名额条件；本工具暂不肯定资格。');
+      if (a.country === 'australia') pending.push('澳大利亚462的当期抽签、年龄、学历、英语、资金和名额条件仍待确认，请先查看官方申请要求。');
     }
     if (tourism(a)) {
       if (a.country === 'singapore') {
         refs.push('sgArrival');
-        if (['31-90', '91-180', '180+'].includes(a.days)) reasons.push('本次停留超过30天，不能直接套用本工具核验的中新短期免签安排。请查询实际访问目的对应许可。');
+        if (['31-90', '91-180', '180+'].includes(a.days)) reasons.push('本次停留超过30天，超出中新短期免签范围，请查询与你的访问目的相符的许可。');
       }
       if (a.country === 'schengen') {
         if (!P.schengen.some(c => c.id === a.schengenCountry)) pending.push('尚未确定具体申根主要目的地。');
@@ -52,12 +52,12 @@
         if (a.schengenPrior === 'unknown') pending.push('需核对滚动180天内的已用天数；90天不是每次旅行都重新获得。');
       }
       if (a.country === 'uk' && a.days === '180+') reasons.push('计划超过通常6个月访客停留范围，应查询相应签证路径；天数区间不等于官方月数计算。');
-      if (!P.sources[mainSource(a)]?.reviewedAt) pending.push('该类别的具体官方规则尚未完整核验，暂不确认全部资格条件。');
+      if (!P.sources[mainSource(a)]?.reviewedAt) pending.push('该类别的部分申请条件尚待确认，请通过下方官方入口核对后再递交。');
       if (a.tripPurpose === 'employment') reasons.push('受雇工作／打工度假不能直接套用普通旅游或短期免签路径；请返回选择相应工作路径。');
       if (a.tripPurpose !== 'tourism') pending.push('探亲、课程、活动或实习可能需要不同访问条件或签证类别，请先核对具体活动。');
     }
     if (a.type === 'offer-work') {
-      if (a.offer === 'none' || a.offer === 'verbal') reasons.push('尚无可核验的正式聘用文件，不满足此“已有Offer”评估路径的前提。');
+      if (a.offer === 'none' || a.offer === 'verbal') reasons.push('请先取得正式的书面聘用文件，再核对工作签证申请条件。');
       pending.push('有Offer不等于可获工作许可；具体签证类别、雇主资格、岗位、薪资、学历和其他要求均须按官方规则核对。');
       if (a.sponsor !== 'yes') pending.push('雇主担保／认证／申请资格未确认。');
       if (a.salaryCheck !== 'yes') pending.push('岗位及薪资是否适用该类别的要求未确认。');
@@ -66,7 +66,7 @@
     }
     if (reasons.length) return { code: 'blocked', title: '当前计划需要调整', reasons: [...reasons, ...pending], refs };
     if (pending.length) return { code: 'pending', title: '部分资格仍待确认', reasons: pending, refs };
-    return { code: a.country === 'singapore' && tourism(a) ? 'exempt' : 'initial', title: a.country === 'singapore' && tourism(a) ? '可按短期免签准备入境' : '可继续核对材料与申请条件', reasons: [a.country === 'singapore' && tourism(a) ? '中国大陆普通护照、符合条件的短期旅游且不超过30天，可参考已核验的免签安排；免签不保证入境，也不授予工作权利。' : '已填写的基础条件未触发本工具已核验的限制；名额、健康、品行及其他条件仍由官方审查，不能据此认定一定合资格。'], refs };
+    return { code: a.country === 'singapore' && tourism(a) ? 'exempt' : 'initial', title: a.country === 'singapore' && tourism(a) ? '可按短期免签准备入境' : '可继续核对材料与申请条件', reasons: [a.country === 'singapore' && tourism(a) ? '你的计划可参考30天以内短期旅游免签安排。出发前请确认入境所需材料；如计划工作，需另办相应许可。' : '根据你选择的情况，可以继续准备材料。请同时确认该类别的完整申请条件、开放名额及健康和品行要求。'], refs };
   }
 
   function materialPlan(a) {
@@ -75,30 +75,30 @@
     const add = (id, title, detail, refs = [src], kind = '建议核对') => items.push({ id, title, detail, refs, kind });
     add('passport', '护照与身份材料', '本人核对护照有效期、空白页和身份信息。未办理护照时，先通过国家移民管理局／当地出入境管理机构了解办理要求。');
     const sgExempt = a.country === 'singapore' && tourism(a) && ['1-7','8-15','16-30'].includes(a.days) && a.tripPurpose === 'tourism';
-    if (!sgExempt) add('application', '申请表、照片与申请账号', '从对应官方入口确认表格、照片规格、缴费、预约或递交方式；无需向本网站上传证件。');
+    if (!sgExempt) add('application', '申请表、照片与申请账号', '在官方申请页面确认表格、照片规格、费用、预约和递交方式。');
     if (sgExempt) add('arrival', 'SG Arrival Card 与入境事项', '通常在抵达前3天内（含抵达日）通过ICA官方入口提交。入境卡免费且不是签证；同时核对护照、返程和入境要求。', ['sgArrival','sg'], '官方要求／说明');
     if (a.studentStatus === 'student') add('student', '在读证明与返校安排', '向学校教务处／学生事务部门咨询：姓名、学籍、课程／年级、假期和返校安排、签章及联系方式。翻译、格式和有效期按受理方清单确认。');
-    else add('status', '当前身份与回国安排', a.studentStatus === 'recent-grad' ? '毕业证明、真实的工作／继续升学安排或其他能解释旅行后计划的材料；毕业本身不自动提高或降低资格。' : '按实际身份准备在职、经营、学习或其他说明；没有固定工作不能用不真实材料替代。');
+    else add('status', '当前身份与回国安排', a.studentStatus === 'recent-grad' ? '准备毕业证明，以及工作、继续升学或其他旅行后的安排说明。' : '按目前情况准备在职、经营、学习或其他身份及后续安排说明。');
     if (['parents','shared','other'].includes(a.funding)) {
-      add('sponsor', '出资说明与资助关系', `${a.funding === 'parents' ? '父母' : '资助人'}的资助范围、关系及支持意愿；核对是否需要户口簿、出生证明等关系材料。不要默认所有情况都必须公证。`, a.country === 'uk' ? ['ukDocs'] : [src]);
-      add('sponsorFunds', '出资人的资金来源材料', '按受理方要求准备真实银行流水／收入或其他来源证据。收入、账户余额与可支配资金是不同概念；不通过临时大额转账制造流水。', a.country === 'uk' ? ['ukDocs'] : [src]);
+      add('sponsor', '出资说明与资助关系', `${a.funding === 'parents' ? '父母' : '资助人'}的资助范围、关系及支持意愿；核对是否需要户口簿、出生证明等关系材料，以及是否需要翻译或公证。`, a.country === 'uk' ? ['ukDocs'] : [src]);
+      add('sponsorFunds', '出资人的资金来源材料', '准备出资人的银行流水、收入或其他资金来源证明。账户如有大额转入，也请保留相应的来源说明。', a.country === 'uk' ? ['ukDocs'] : [src]);
     }
-    if (['self','shared','scholarship'].includes(a.funding)) add('ownFunds', '本人可使用资金及来源', a.funding === 'scholarship' ? '奖学金／补助证明、到账记录、余额与实际可使用范围；无需虚构工资收入。' : '核对本人流水、存款及真实来源；按申请类别准备，不能仅凭年收入区间判断资金充分。');
-    add('itinerary', a.type === 'offer-work' ? '赴任及住宿安排' : '行程、住宿与离境计划', '准备与出行目的、假期、预算一致的安排。是否需已付款机票／酒店按官方清单核对，不为测评提前购买不可退产品。');
-    if (a.tripPurpose === 'visiting' || a.relatives === 'host') add('invitation', '邀请与住宿关系说明', '说明访问对象、关系、停留地点及费用承担；邀请函和邀请人证件要求按类别确认，不隐瞒真实访问目的。');
+    if (['self','shared','scholarship'].includes(a.funding)) add('ownFunds', '本人可使用资金及来源', a.funding === 'scholarship' ? '准备奖学金／补助证明、到账记录，并确认可使用的金额与范围。' : '准备本人银行流水、存款及资金来源证明，确认可用金额能覆盖行程费用。');
+    add('itinerary', a.type === 'offer-work' ? '赴任及住宿安排' : '行程、住宿与离境计划', '准备与出行目的、假期、预算一致的安排。是否需已付款机票／酒店按官方清单核对，付款前留意退改政策。');
+    if (a.tripPurpose === 'visiting' || a.relatives === 'host') add('invitation', '邀请与住宿关系说明', '说明访问对象、关系、停留地点及费用承担，按对应类别准备邀请函及邀请人材料。');
     if (a.residence && (a.residence !== a.province || a.applyAt !== 'residence')) add('residence', '实际居住／异地申请证明', '准备学校在读与住宿、居住证或境外合法居留等相应证据，并向受理方确认可接受的材料及居住时长。户籍和常住地不是同一概念。', a.country === 'schengen' ? ['eu'] : a.country === 'japan' ? ['jpRegion'] : [src]);
     if (a.country === 'schengen' && tourism(a)) add('insurance', '申根旅游医疗保险', '按所选国家官方清单确认承保范围、额度和有效日期；欧盟指引要求涵盖紧急医疗、住院和遣返等风险。', ['eu'], '官方要求／说明');
     if (a.type === 'working-holiday') {
-      add('whEducation', '学历与语言资格证据', '项目可能要求学历认证、认可英语考试或特定大学经历；自评“英语不错”不等于符合正式证据要求。');
+      add('whEducation', '学历与语言资格证据', '查看项目接受的学历认证、语言考试和院校经历，准备相应证明。');
       add('whFunds', '项目资金、保险与名额', a.country === 'new-zealand' ? '核对至少NZD4,200生活资金、离境费用、全程医疗保险、年度名额和开放状态。' : '逐项打开项目官方页核对当期资金、保险、年龄和名额要求。');
     }
     if (a.type === 'offer-work') {
       add('contract', '聘用合同与岗位信息', '核对雇主主体、职位、职责、工作时长、薪资、期限及签署情况；Offer和工作许可是不同文件。');
       add('sponsorship', '雇主资格与申请类别', '让雇主确认适用工作签证／居留类别、担保或认证、岗位审核及双方递交责任。');
-      add('qualification', '岗位所需学历、经验与注册', '按具体类别核对学历、经验、语言、职业注册和资格认证；不以签署合同代替这些条件。');
+      add('qualification', '岗位所需学历、经验与注册', '按具体类别准备学历、工作经验、语言、职业注册或资格认证材料。');
     }
-    if (a.country === 'usa') add('interview', '美国申请与面谈准备', '从国务院及使领馆官方入口确认适用流程；是否面谈及是否可免面谈以当期规则和本人情况为准，不把练习次数当作资格条件。');
-    if (a.refusal === 'yes' || a.overstay === 'yes') add('history', '既往记录说明', '保留真实拒签／取消／逾期文件及后续变化，按表格如实披露。拒签不会因为自称“已解决”自动消失。');
+    if (a.country === 'usa') add('interview', '美国申请与面谈准备', '从国务院及使领馆官方入口确认适用流程；是否需要面谈或可免面谈，以当期规则和你的情况为准。');
+    if (a.refusal === 'yes' || a.overstay === 'yes') add('history', '既往记录说明', '保留拒签、取消签证或逾期记录文件，说明后续情况变化，并按申请表要求如实填写。');
     return items;
   }
 
@@ -118,19 +118,85 @@
       title = dest ? `${dest.name} · 合法居住地受理规则` : '先确定申根主要目的地';
     } else if (a.country === 'japan' || a.country === 'korea') {
       refs.push(a.country === 'japan' ? 'jpRegion' : 'krRegion');
-      details.push('需同时核对户籍、就读／常住地址、受理领区及认可递交渠道。当前未完整核验领区表，不直接指定使领馆或承诺异地可受理。');
-      details.push('询问受理方：凭在读及住宿证明是否可在学校所在地申请？是否另需居住证、居住时长或指定代理渠道？代理自身接单标准不能当作官方资格限制。');
+      details.push('请向使领馆确认户籍和就读／常住地址对应的受理领区，以及可使用的递交渠道。具体受理范围尚待确认。');
+      details.push('在学校所在地申请时，可询问是否接受在读及住宿证明，是否需要居住证、最低居住时长或指定递交渠道。');
     } else if (a.country === 'singapore' && tourism(a) && ['1-7','8-15','16-30'].includes(a.days) && a.tripPurpose === 'tourism') {
       title = '符合短期免签情形时无需递交旅游签证';
       details.push('按ICA短期免签与入境要求准备；工作、长期停留和其他受限活动另行办理相应许可。');
     } else {
-      details.push('先从该类别官方入口确认在线申请、预约／生物信息地点与居住身份要求；本工具不按户籍省份评定获签难度。');
+      details.push('在官方申请页面确认递交方式、预约及生物信息采集地点，并核对当地申请所需的居住身份。');
     }
     if (a.residence !== a.province || a.applyAt === 'other' || a.applyAt === 'overseas') details.push('存在户籍与居住地／拟申请地差异：先确认受理资格和证明，再缴费、预约或寄送材料。');
     if (a.residenceProof !== 'ready') details.push('居住依据尚待确认：可咨询在读／住宿证明、居住证或境外合法居留材料，具体接受范围由受理方决定。');
-    if (a.residenceDuration === 'short') details.push('在现常住地不足3个月：优先询问该受理方是否要求最低居住时长或接受在读依据，不自动判为不能申请。');
-    details.push('户籍本身不加减分；此处反映受理资格、材料和办理成本差异，不能换算为获签概率。');
+    if (a.residenceDuration === 'short') details.push('你在现常住地居住不足3个月，请先确认受理方的居住时长要求，以及是否接受在读证明。');
     return { title, details, refs };
+  }
+
+  function scoreAssessment(a, result = eligibility(a)) {
+    const base = 48;
+    const factors = [];
+    const add = (id, label, points, detail = '', refs = []) => factors.push({ id, label, points, detail, refs });
+    if (result.code === 'unsupported') return { value: null, label: '先确认适用项目', base, factors, note: '该项目暂不支持测评，可在官方页面确认其他申请路径。' };
+    if (result.code === 'exempt') return { value: null, label: '按免签行程准备', base, factors, note: '符合短期免签情形时，可直接查看入境准备和材料清单。' };
+
+    if (['college','bachelor','master','phd'].includes(a.education)) add('education', '教育经历明确', 6);
+    if (a.studentStatus === 'student') add('student', '在读身份清晰', 5, '准备在读证明及假期、返校安排。');
+    if (a.studentStatus === 'recent-grad') add('graduate', '毕业阶段明确', 3, '说明毕业后的工作、升学或其他安排。');
+    if (a.availableFunds === 'enough') add('funds', '行程资金可覆盖', 10, '保留预算及真实可用资金的证明。');
+    else if (a.availableFunds === 'short') add('funds', '行程资金暂不足', -12);
+    else add('funds', '可用资金待核算', -5);
+    const income = a.funding === 'self' ? {under10:1,'10-30':3,'30+':4}[a.incomeSelf] : ['parents','shared'].includes(a.funding) ? {under15:1,'15-30':2,'30-60':3,'60+':4}[a.incomeFamily] : 0;
+    if (income && a.availableFunds === 'enough') add('income', '出资人的收入支持', income, '年收入需结合本次可使用资金及来源证明一起说明。');
+    if (a.funding === 'parents' || a.funding === 'shared') add('funding', '父母资助路径明确', 3, '准备关系证明、资助说明和出资人的资金材料。');
+    if (a.returnPlan === 'clear') add('return', '离境／返校安排明确', 6);
+    else if (a.returnPlan === 'none' || unknown(a.returnPlan)) add('return', '离境安排待完善', -5);
+    if (['study','work'].includes(a.domesticTies)) add('ties', '旅行后的安排清晰', 3);
+    const history = Array.isArray(a.history) ? a.history : [];
+    if (!history.includes('none') && a.overstay === 'no') {
+      if (history.some(h => ['usa','uk','schengen','anz'].includes(h))) add('history', '有相关出境经历', 8, '按申请要求提供既往签证及出入境记录。');
+      else if (history.some(h => ['japan','korea','sea','other'].includes(h))) add('history', '有出境经历', 5);
+    }
+    if (a.refusal === 'no') add('refusal', '无既往拒签等记录', 3);
+    else if (a.refusal === 'yes') add('refusal', '既往拒签等记录待说明', -12, '如实说明原因及之后的情况变化。');
+    else add('refusal', '既往签证记录待确认', -3);
+    if (a.overstay === 'no') add('overstay', '无逾期或违规记录', 2);
+    else if (a.overstay === 'yes') add('overstay', '既往逾期／违规记录', -18);
+    else add('overstay', '出入境合规情况待确认', -3);
+    if (a.entry === 'multiple') add('entry', '多次入境条件需补充', -4, '核对多次类别并说明重复出行需要。');
+
+    if (tourism(a) && ['japan','korea'].includes(a.country)) {
+      const refs = [a.country === 'japan' ? 'jpRegion' : 'krRegion'];
+      if (a.province && a.province === a.residence && ['hukou','residence'].includes(a.applyAt)) add('local-route', '户籍与常住申请地一致', 4, '户籍和常住地一致，递交依据较清楚；仍需确认受理领区。', refs);
+      else if (a.residenceProof === 'ready' && ['residence','overseas'].includes(a.applyAt)) add('residence-route', '异地申请依据已准备', 4, '递交前确认该受理方接受你的居住／就读证明。', refs);
+      if (a.regionalPolicy === 'confirmed') add('hukou-benefit', '户籍相关申请便利', 6, `根据你的选择，受理方已确认${a.province || '你的'}户籍适用本次申请的简化或多次入境条件。具体适用范围以该受理方要求为准。`, refs);
+    }
+    if (a.type === 'offer-work') {
+      if (a.offer === 'signed') add('offer', '已有正式聘用合同', 10);
+      else if (a.offer === 'written') add('offer', '已有书面聘用意向', 5);
+      if (a.sponsor === 'yes') add('sponsor', '雇主资格已核对', 5);
+      if (a.salaryCheck === 'yes') add('salary', '岗位及薪资已核对', 5);
+      if (a.qualification === 'ready') add('qualification', '岗位个人条件已核对', 5);
+    }
+    if (a.type === 'working-holiday') {
+      if (a.whSlot === 'yes') add('slot', '项目开放及名额已确认', 5);
+      if (a.languageEvidence === 'yes') add('language', '语言证据已准备', 5);
+      if (a.insurance === 'yes') add('insurance', '医疗保险已准备', 3);
+      if (a.whFunds === 'yes') add('whFunds', '项目生活资金已确认', 5);
+    }
+    let value = base + factors.reduce((sum, f) => sum + f.points, 0);
+    if (result.code === 'blocked') {
+      if (value > 25) add('eligibility-limit', '先解决申请条件限制', 25 - value, '请先调整报告列出的不适用条件，再重新测评。');
+      value = Math.min(value, 25);
+    } else if (result.code === 'pending') {
+      add('eligibility-limit', '部分申请条件尚待确认', -10, '确认资格初筛中列出的事项后，再评估申请计划。');
+      value -= 10;
+    }
+    value = Math.max(0, Math.min(result.code === 'pending' ? 89 : 95, value));
+    // Keep every displayed contribution reconcilable, including range limits.
+    const sum = base + factors.reduce((total, f) => total + f.points, 0);
+    if (sum !== value) add('range-limit', '综合分数范围调整', value - sum);
+    const label = result.code === 'blocked' ? '先调整申请计划' : result.code === 'pending' ? '补充确认后再申请' : value >= 80 ? '申请背景较充分' : value >= 65 ? '具备基础，继续完善' : value >= 50 ? '建议补强后申请' : '先完善申请条件';
+    return { value, label, base, factors, note: '评分综合考虑你的背景和申请条件，满分100；仅供参考，不代表实际获签概率。' };
   }
 
   function buildReport(a, prepared = {}, now = new Date()) {
@@ -138,53 +204,54 @@
     const materials = materialPlan(a).map(item => ({ ...item, status: ['ready','missing','unknown'].includes(prepared[item.id]) ? prepared[item.id] : 'unknown' }));
     const notes = [];
     const add = (id, text, refs = [mainSource(a)], priority = 'notice', basis = '准备建议') => notes.push({ id, text, refs, priority, basis });
-    if (a.studentStatus === 'student') add('student', '学生本人没有工资、没有房产或首次出境，都不能单独推断不合资格。重点解释真实资助、假期和返校安排。');
+    if (a.studentStatus === 'student') add('student', '在校期间可重点准备在读证明、假期及返校安排，并说明旅行费用的来源。');
     if (a.graduation === 'soon') add('graduation', '接近毕业时，请核对旅行期间是否仍在读、是否还能使用学生材料，并用真实的毕业后安排解释行程；不能默认继续适用在读生简化条件。');
-    if (a.funding === 'parents' || a.funding === 'shared') add('parents', '父母出资不会自动加分。应核对亲属关系、资助意愿、真实资金来源与本次可用金额。');
+    if (a.funding === 'parents' || a.funding === 'shared') add('parents', '由父母出资时，准备亲属关系、资助说明和父母的资金来源材料，确认本次可使用的金额。');
     if (a.funding === 'other') add('other-funder', '非父母资助需要解释关系、资助原因和资金能力，核对是否可被该类别接受。');
     if (a.availableFunds === 'short' || a.availableFunds === 'unknown') add('funds', '本次可支配资金与费用覆盖尚未说明，先列出交通、住宿、生活及应急费用，核对真实资金可用性；年收入不能替代账户资金证据。', undefined, 'important');
-    if (a.incomeFamily === 'unknown' || a.incomeSelf === 'unknown') add('income-unknown', '收入信息不完整，不能推断资助能力；不透露也不会被自动判为低资格。');
+    if (a.incomeFamily === 'unknown' || a.incomeSelf === 'unknown') add('income-unknown', '如果暂不清楚收入情况，可以先与出资人确认本次可使用的资金及证明材料。');
     const familyIncome = {under15:'15万元以下','15-30':'15–30万元','30-60':'30–60万元','60+':'60万元以上'}[a.incomeFamily];
-    if (familyIncome && ['parents','shared','other'].includes(a.funding)) add('income-context', `你选择的家庭年收入为${familyIncome}。这只是背景说明，不是通过门槛；仍需结合本次预算、实际资助人和可用资金证据判断是否有待解释的缺口。`);
+    if (familyIncome && ['parents','shared','other'].includes(a.funding)) add('income-context', `你选择的家庭年收入为${familyIncome}。请结合本次预算，与出资人确认可使用的金额和对应资金证明。`);
     if (a.funding === 'self' && a.incomeSelf === 'none') add('self-source', '本人出资但无固定收入：可如实说明存款、奖学金或既往资助来源，并提供相应证据。');
-    if (a.budget === 'low' && ['usa','uk','australia','new-zealand','schengen'].includes(a.country)) add('budget', '所选旅行预算较紧，建议先核算远程交通及住宿。这是预算提示，并非官方最低资产门槛。');
-    if (a.history?.includes('none')) add('first-trip', '首次出境本身不等于不符合申请条件，无需为了“刷记录”额外出国；把本次真实行程和资助说明做好。');
+    if (a.budget === 'low' && ['usa','uk','australia','new-zealand','schengen'].includes(a.country)) add('budget', '所选旅行预算较紧，建议先核算远程交通及住宿。可进一步估算机票、住宿和应急支出。');
+    if (a.history?.includes('none')) add('first-trip', '第一次出国，可以从清晰的行程、住宿、费用来源和返程安排开始准备。');
     if (a.overstay === 'yes' || a.refusal === 'yes') add('history', '既往拒签、取消或逾期记录需要按要求如实披露并解释变化；必要时向官方或有资质人士咨询。', undefined, 'important');
-    if (a.refusal === 'unknown' || a.overstay === 'unknown') add('history-unknown', '既往记录信息不足，报告不能视作已排除相关影响。', undefined, 'important');
-    if (a.entry === 'multiple') add('entry', '多次入境愿望不直接减分。是否可申请、签发次数、有效期和每次停留期限必须按该类别区分；多次不等于可连续长期居留。');
-    if (a.returnPlan !== 'clear') add('return', '建议用返校、考试、工作或其他真实安排解释离境计划，不把购买不可退机票当成测评的前提。');
+    if (a.refusal === 'unknown' || a.overstay === 'unknown') add('history-unknown', '请先核对既往签证及出入境记录，确认申请表中需要说明的事项。', undefined, 'important');
+    if (a.entry === 'multiple') add('entry', '如需多次入境，请核对对应类别的申请条件，并说明重复出行的需要。签证有效期与每次允许停留时间应分别确认。');
+    if (a.returnPlan !== 'clear') add('return', '建议用返校、考试、工作或其他真实安排解释离境计划，是否需要提交已出票机票，请以官方材料清单为准。');
     if (a.domesticTies === 'property') add('property', '家庭房产不等于申请人本人资产，也不能替代资金、在读或真实行程材料。');
     if (a.relatives === 'host' || a.tripPurpose === 'visiting') add('host', '访问亲友和住宿关系可能改变材料要求，需按实际目的核对访问类别。');
     if (a.companions === 'friends') add('companions', '和朋友同行时可保持主要行程一致，但每个人仍需独立满足申请和材料要求。');
-    if (a.country === 'singapore' && tourism(a)) add('sg-entry', '短期免签与最终准许入境不同；在抵达前核对ICA入境要求，不能把“免签”当作可工作或无限停留。', ['sg','sgArrival'], 'important', '已核验规则');
+    if (a.country === 'singapore' && tourism(a)) add('sg-entry', '短期免签与最终准许入境不同；在抵达前核对ICA入境要求，不能把“免签”当作可工作或无限停留。', ['sg','sgArrival'], 'important', '政策提示');
     if (a.country === 'schengen' && tourism(a)) {
-      add('rolling-limit', '短期停留按任意180天内累计90天计算；有效期、入境次数与允许停留天数是三件事。', ['eu'], 'important', '已核验规则');
+      add('rolling-limit', '短期停留按任意180天内累计90天计算；有效期、入境次数与允许停留天数是三件事。', ['eu'], 'important', '政策提示');
       if (a.departure && a.departure !== 'unknown') {
         const date = new Date(`${a.departure}-01T12:00:00`);
         const months = (date.getFullYear() - now.getFullYear()) * 12 + date.getMonth() - now.getMonth();
-        if (months > 6) add('too-early', '预计出发月份超过6个月，通常还未进入申根短期签证递交窗口；可先准备，但不应现在直接递交。', ['eu'], 'notice', '已核验规则');
-        if (months <= 1) add('time-short', '出发时间较近：通常至少提前15天递交，预约等待和补件还需额外时间。因未选择具体日期，本工具不能确认是否来得及。', ['eu'], 'important', '已核验规则');
+        if (months > 6) add('too-early', '预计出发月份超过6个月，通常还未进入申根短期签证递交窗口；可先准备，但不应现在直接递交。', ['eu'], 'notice', '政策提示');
+        if (months <= 1) add('time-short', '出发时间较近：通常至少提前15天递交，预约等待和补件还需额外时间。请结合具体出发日期确认是否仍来得及申请。', ['eu'], 'important', '政策提示');
       }
     }
     if (a.departure === 'unknown') add('date-unknown', '出发月份未确定，暂不能判断递交窗口、预约或材料有效期。');
     const region = jurisdiction(a);
-    const sourceIds = [...new Set([mainSource(a), ...result.refs, ...region.refs, ...notes.flatMap(n => n.refs), ...materials.flatMap(m => m.refs)].filter(Boolean))];
+    const assessment = scoreAssessment(a, result);
+    const sourceIds = [...new Set([mainSource(a), ...result.refs, ...region.refs, ...assessment.factors.flatMap(f => f.refs), ...notes.flatMap(n => n.refs), ...materials.flatMap(m => m.refs)].filter(Boolean))];
     const sources = sourceIds.map(id => ({ id, ...P.sources[id] }));
     if (a.country === 'schengen') {
       const selected = P.schengen.find(c => c.id === a.schengenCountry);
-      if (selected && !sources.some(s => s.url === selected.url)) sources.push({ id: `country-${selected.id}`, label: `${selected.name} · 官方申请入口`, url: selected.url, reviewedAt: null, scope: '国家入口；具体签证类别、材料及领区需在该网站核对' });
+      if (selected && !sources.some(s => s.url === selected.url)) sources.push({ id: `country-${selected.id}`, label: `${selected.name} · 官方申请入口`, url: selected.url, reviewedAt: null, scope: '可在此查询具体签证类别、材料及受理地点' });
     }
     const ready = materials.filter(m => m.status === 'ready').length;
     const actions = [];
     if (result.code === 'blocked' || result.code === 'unsupported') actions.push('先处理资格／路径限制，再决定是否缴费或继续准备。');
     if (result.code === 'pending') actions.push('先确认报告列出的资格疑问，尤其是具体签证类别与项目条件。');
     actions.push(region.title);
-    actions.push('按下方清单逐项准备；标记“已准备”仅表示你的自报状态，未审核文件内容。');
+    actions.push('按下方清单准备材料，并随时更新准备进度。');
     actions.push('递交前重新打开官方来源，核对清单、费用、预约和当期政策。');
-    return { generatedAt: new Date(now).toISOString(), eligibility: result, materials, notes, region, sources, ready, total: materials.length, actions };
+    return { generatedAt: new Date(now).toISOString(), assessment, eligibility: result, materials, notes, region, sources, ready, total: materials.length, actions };
   }
 
-  const api = { eligibility, materialPlan, jurisdiction, buildReport, holidaySupported, mainSource };
+  const api = { eligibility, materialPlan, jurisdiction, scoreAssessment, buildReport, holidaySupported, mainSource };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.VisaEngine = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this);

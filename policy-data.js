@@ -2,10 +2,10 @@
    A reachable page is not necessarily a reviewed rule. Do not mark it verified automatically. */
 (function (root) {
   'use strict';
-  const source = (label, url, reviewedAt = null, scope = '官方入口；具体条件待核验') => ({ label, url, reviewedAt, scope });
+  const source = (label, url, reviewedAt = null, scope = '申请细则待确认，请查看官方要求') => ({ label, url, reviewedAt, scope });
   const sources = {
     jp: source('日本驻华使馆 · 签证', 'https://www.cn.emb-japan.go.jp/itpr_zh/visa.html'),
-    jpRegion: source('日本驻华使馆 · 领事信息', 'https://www.cn.emb-japan.go.jp/itpr_zh/consular.html', null, '页面限制自动读取；领区及异地申请资格须向使领馆确认'),
+    jpRegion: source('日本驻华使馆 · 领事信息', 'https://www.cn.emb-japan.go.jp/itpr_zh/consular.html', null, '领区及异地申请条件待确认，可向使领馆咨询'),
     jpWork: source('日本外务省 · 工作及长期居留', 'https://www.mofa.go.jp/j_info/visit/visa/long/index.html'),
     jpWh: source('日本外务省 · Working Holiday', 'https://www.mofa.go.jp/j_info/visit/w_holiday/index.html'),
     kr: source('韩国签证门户', 'https://www.visa.go.kr/'),
@@ -21,9 +21,9 @@
     ukDocs: source('英国政府 · 访客材料指引', 'https://www.gov.uk/government/publications/visitor-visa-guide-to-supporting-documents/guide-to-supporting-documents-visiting-the-uk', '2026-11-18', '学生证明、资金来源、第三方资助关系及支持能力；材料示例不等于人人必须提交'),
     ukWh: source('英国政府 · Youth Mobility Scheme', 'https://www.gov.uk/youth-mobility/eligibility', '2026-11-18', '中国大陆普通护照不在当前适用国籍／护照清单内'),
     ukWork: source('英国政府 · Skilled Worker', 'https://www.gov.uk/skilled-worker-visa/your-job', '2026-11-18', '认可担保雇主、合资格岗位和相应薪资要求；例外与具体门槛应按申请时规则核对'),
-    au: source('澳大利亚内政部 · Visitor 600', 'https://immi.homeaffairs.gov.au/visas/getting-a-visa/visa-listing/visitor-600', null, '动态页面正文不完整，未据此核验具体材料或门槛'),
-    auWh: source('澳大利亚内政部 · 首次462', 'https://immi.homeaffairs.gov.au/visas/getting-a-visa/visa-listing/work-holiday-462/first-work-holiday-462', null, '动态页面正文不完整；年龄、学历、英语、资金及中国申请人抽签安排均待重新核验'),
-    auWork: source('澳大利亚内政部 · Skills in Demand 482', 'https://immi.homeaffairs.gov.au/visas/getting-a-visa/visa-listing/skills-in-demand-visa-subclass-482', null, '工作签证类别、担保及岗位条件待核验'),
+    au: source('澳大利亚内政部 · Visitor 600', 'https://immi.homeaffairs.gov.au/visas/getting-a-visa/visa-listing/visitor-600', null, '具体材料及申请条件待确认，请查看最新官方清单'),
+    auWh: source('澳大利亚内政部 · 首次462', 'https://immi.homeaffairs.gov.au/visas/getting-a-visa/visa-listing/work-holiday-462/first-work-holiday-462', null, '年龄、学历、英语、资金及中国申请人抽签安排待确认，请查看当期申请要求'),
+    auWork: source('澳大利亚内政部 · Skills in Demand 482', 'https://immi.homeaffairs.gov.au/visas/getting-a-visa/visa-listing/skills-in-demand-visa-subclass-482', null, '工作签证类别、担保及岗位条件待确认'),
     nz: source('新西兰移民局 · Visitor Visa', 'https://www.immigration.govt.nz/visas/visitor-visa/', '2026-11-17', '访客签证入口；以具体申请情形清单为准'),
     nzWh: source('新西兰移民局 · China Working Holiday', 'https://www.immigration.govt.nz/visas/china-working-holiday-visa/', '2026-11-18', '18至30岁、中国公民且居住在中国；高中学历、认可英语证据、至少NZD4200、全程医疗保险及既往WH签发限制；有年度名额'),
     nzWork: source('新西兰移民局 · AEWV', 'https://www.immigration.govt.nz/visas/accredited-employer-work-visa/', '2026-11-18', '认证雇主及符合要求的岗位，通常每周至少30小时；仍需核对其他条件'),
@@ -57,13 +57,13 @@
     ['se','瑞典','https://www.migrationsverket.se/English.html'], ['ch','瑞士','https://www.eda.admin.ch/countries/china/en/home/visa.html'],
   ].map(([id, name, url]) => ({ id, name, url }));
   schengen.forEach(country => {
-    sources[`schengen-${country.id}`] = source(`${country.name} · 官方申请入口`, country.url, null, '国家官方入口；工作／居留类别、材料和领区尚需逐项核验，不能套用统一申根工作签证');
+    sources[`schengen-${country.id}`] = source(`${country.name} · 官方申请入口`, country.url, null, '可在此查询该国签证及居留事项；具体类别、材料和受理地点待确认');
   });
   const provinces = ['北京','天津','河北','山西','内蒙古','辽宁','吉林','黑龙江','上海','江苏','浙江','安徽','福建','江西','山东','河南','湖北','湖南','广东','广西','海南','重庆','四川','贵州','云南','西藏','陕西','甘肃','青海','宁夏','新疆'];
   const types = [
-    { id: 'tourism', title: '旅游 / 短期访问', en: 'VISIT', description: '先判断签证或免签，再准备材料' },
-    { id: 'working-holiday', title: '打工度假', en: 'WORK & HOLIDAY', description: '先核对护照、年龄、学历和项目条件' },
-    { id: 'offer-work', title: '已有 Offer · 工作', en: 'EMPLOYMENT', description: '区分雇主聘用与工作许可资格' },
+    { id: 'tourism', title: '旅游 / 短期访问', en: 'VISIT', description: '观光旅行、探亲访友与短期访问' },
+    { id: 'working-holiday', title: '打工度假', en: 'WORK & HOLIDAY', description: '旅行途中，体验当地生活与工作' },
+    { id: 'offer-work', title: '已有 Offer · 工作', en: 'EMPLOYMENT', description: '已获得当地雇主的聘用意向或合同' },
   ];
   const workSources = { japan:'jpWork', korea:'kr', singapore:'sgWork', usa:'usWork', uk:'ukWork', australia:'auWork', 'new-zealand':'nzWork', schengen:'euWork' };
   const holidaySources = { japan:'jpWh', korea:'krWh', singapore:'sgWh', usa:'usWork', uk:'ukWh', australia:'auWh', 'new-zealand':'nzWh', schengen:'euWork' };
